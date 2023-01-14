@@ -4,14 +4,12 @@ namespace App\Jobs;
 
 use DB;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
 
 class AlterTableJob implements ShouldQueue
 {
@@ -34,18 +32,21 @@ class AlterTableJob implements ShouldQueue
      */
     public function handle()
     {
+        if ($this->table_name == 'jobs' || $this->table_name == 'migrations') {
+            return;
+        }
+
         if (!Schema::hasColumn($this->table_name, 'uuid')) {
             Schema::table($this->table_name, function (Blueprint $table) {
-                $table->uuid('uuid');
+                if (Schema::hasColumn($this->table_name, 'id')) {
+                    $table->uuid('uuid')->nullable()->after('id');
+                } else {
+                    $table->uuid('uuid')->nullable();
+                }
             });
         }
 //        print "Doing {$this->table_name} from {$this->start_range} to {$this->end_range}";
 
-        $uuid = Str::uuid();
-        if($this->start_range) {
-            DB::statement("UPDATE {$this->table_name} SET uuid = '{$uuid}' WHERE id BETWEEN {$this->start_range} AND {$this->end_range} AND uuid IS NULL");
-        }else {
-            DB::statement("UPDATE {$this->table_name} SET uuid = '{$uuid}' WHERE uuid IS NULL");
-        }
+        dispatch(new FillUuidJob($this->table_name, $this->start_range, $this->end_range));
     }
 }

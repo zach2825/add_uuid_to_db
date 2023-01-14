@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Jobs\AlterTableJob;
 use DB;
 use Illuminate\Console\Command;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 class fillQueueCommand extends Command
@@ -14,7 +15,7 @@ class fillQueueCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'uuid:table-add {getAllTablesName}';
+    protected $signature = 'uuid:table-add {getAllTablesName} {--r|reset : clear all uuid and re-create them}';
 
     /**
      * The console command description.
@@ -34,8 +35,24 @@ class fillQueueCommand extends Command
         $table_names = array_map(fn($table) => $table->{$this->argument('getAllTablesName')}, $tables);
 
         $record_count = 0;
+        Schema::disableForeignKeyConstraints();
 
         foreach($table_names as $table_name) {
+            if ($this->option('reset')) {
+                if (Schema::hasColumn($table_name, 'uuid')) {
+                    try {
+                        Schema::table($table_name, function (Blueprint $table) {
+                            $table->dropColumn('uuid');
+                        });
+                    } catch (\Exception $e) {
+                        $this->error("Error dropping column uuid from {$table_name} {$e->getMessage()}");
+                    }
+                }
+            }
+
+//            if($table_name == 'jobs' || $table_name == 'migrations') {
+//                continue;
+//            }
             $table_record_count = DB::table($table_name)->count();
 
             $record_count += $table_record_count;
@@ -44,7 +61,7 @@ class fillQueueCommand extends Command
 
             $chunk_count = round($table_record_count / 1_000_000, 0, PHP_ROUND_HALF_UP);
 
-            if(!$chunk_count){
+            if (!$chunk_count) {
                 $chunk_count = 1;
             }
 
@@ -56,7 +73,7 @@ class fillQueueCommand extends Command
                 );
             }else {
                 // call alter table job for chunks of a million records for 10 million records
-                for ($i = 1; $i <= $chunk_count; $i++) {
+                for ($i = 0; $i < $chunk_count; $i++) {
                     $start_range = $i * 1000000;
                     $end_range   = $start_range + 1000000;
 
@@ -67,9 +84,10 @@ class fillQueueCommand extends Command
                     );
                 }
             }
-
             ////////////////////////////////////////////////////////////////////
         }
+
+        Schema::enableForeignKeyConstraints();
 
         $this->info('You have a total of ' . $record_count . ' records in your database.');
 
