@@ -31,22 +31,22 @@ class fillQueueCommand extends Command
      */
     public function handle()
     {
-        $tables = DB::connection()->getSchemaBuilder()->getAllTables();
+        $tables      = DB::connection()->getSchemaBuilder()->getAllTables();
         $table_names = array_map(fn($table) => $table->{$this->argument('getAllTablesName')}, $tables);
 
         $record_count = 0;
         Schema::disableForeignKeyConstraints();
 
-        foreach($table_names as $table_name) {
-            if ($this->option('reset')) {
-                if (Schema::hasColumn($table_name, 'uuid')) {
-                    try {
-                        Schema::table($table_name, function (Blueprint $table) {
-                            $table->dropColumn('uuid');
-                        });
-                    } catch (\Exception $e) {
-                        $this->error("Error dropping column uuid from {$table_name} {$e->getMessage()}");
-                    }
+        $per_chunk_count = 1000;
+
+        foreach ($table_names as $table_name) {
+            if ($this->option('reset') && Schema::hasColumn($table_name, 'uuid')) {
+                try {
+                    Schema::table($table_name, function (Blueprint $table) {
+                        $table->dropColumn('uuid');
+                    });
+                } catch (\Exception $e) {
+                    $this->error("Error dropping column uuid from {$table_name} {$e->getMessage()}");
                 }
             }
 
@@ -59,7 +59,7 @@ class fillQueueCommand extends Command
 
             ////////////////////////////////////////////////////////////////////
 
-            $chunk_count = round($table_record_count / 1_000_000, 0, PHP_ROUND_HALF_UP);
+            $chunk_count = round($table_record_count / $per_chunk_count, 0, PHP_ROUND_HALF_UP);
 
             if (!$chunk_count) {
                 $chunk_count = 1;
@@ -74,8 +74,8 @@ class fillQueueCommand extends Command
             }else {
                 // call alter table job for chunks of a million records for 10 million records
                 for ($i = 0; $i < $chunk_count; $i++) {
-                    $start_range = $i * 1000000;
-                    $end_range   = $start_range + 1000000;
+                    $start_range = $i * $per_chunk_count;
+                    $end_range   = $start_range + $per_chunk_count;
 
                     AlterTableJob::dispatch(
                         table_name: $table_name,
