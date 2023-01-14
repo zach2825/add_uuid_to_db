@@ -43,19 +43,9 @@ class fillQueueCommand extends Command
         $per_chunk_count = $this->option('chunk');
 
         foreach ($table_names as $table_name) {
-            if ($this->option('reset') && Schema::hasColumn($table_name, 'uuid')) {
-                try {
-                    Schema::table($table_name, function (Blueprint $table) {
-                        $table->dropColumn('uuid');
-                    });
-                } catch (\Exception $e) {
-                    $this->error("Error dropping column uuid from {$table_name} {$e->getMessage()}");
-                }
+            if ($table_name == 'jobs' || $table_name == 'migrations') {
+                continue;
             }
-
-//            if($table_name == 'jobs' || $table_name == 'migrations') {
-//                continue;
-//            }
             $table_record_count = DB::table($table_name)->count();
 
             $record_count += $table_record_count;
@@ -68,8 +58,20 @@ class fillQueueCommand extends Command
                 $chunk_count = 1;
             }
 
+            $chunk_count++;
+
             $this->info("There are $table_record_count records in the {$table_name} table. Chunk Count $chunk_count");
 
+            if ($this->option('reset') && Schema::hasColumn($table_name, 'uuid')) {
+                try {
+                    $this->info('removing uuis from ' . $table_name);
+                    Schema::table($table_name, function (Blueprint $table) {
+                        $table->dropColumn('uuid');
+                    });
+                } catch (\Exception $e) {
+                    $this->error("Error dropping column uuid from {$table_name} {$e->getMessage()}");
+                }
+            }
 
             if (!Schema::hasColumn($table_name, 'uuid')) {
                 Schema::table($table_name, function (Blueprint $table) use ($table_name) {
