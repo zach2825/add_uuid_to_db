@@ -15,7 +15,10 @@ class fillQueueCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'uuid:table-add {getAllTablesName} {--r|reset : clear all uuid and re-create them}';
+    protected $signature = 'uuid:table-add {getAllTablesName}
+        {--r|reset : clear all uuid and re-create them}
+        {--c|chunk=3000 : chunk about to update tables with if possible}
+        ';
 
     /**
      * The console command description.
@@ -37,7 +40,7 @@ class fillQueueCommand extends Command
         $record_count = 0;
         Schema::disableForeignKeyConstraints();
 
-        $per_chunk_count = 1000;
+        $per_chunk_count = $this->option('chunk');
 
         foreach ($table_names as $table_name) {
             if ($this->option('reset') && Schema::hasColumn($table_name, 'uuid')) {
