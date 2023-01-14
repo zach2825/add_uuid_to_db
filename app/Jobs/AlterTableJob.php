@@ -5,11 +5,9 @@ namespace App\Jobs;
 use DB;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Schema;
 
 class AlterTableJob implements ShouldQueue
 {
@@ -36,15 +34,6 @@ class AlterTableJob implements ShouldQueue
             return;
         }
 
-        if (!Schema::hasColumn($this->table_name, 'uuid')) {
-            Schema::table($this->table_name, function (Blueprint $table) {
-                if (Schema::hasColumn($this->table_name, 'id')) {
-                    $table->uuid('uuid')->nullable()->after('id');
-                } else {
-                    $table->uuid('uuid')->nullable();
-                }
-            });
-        }
 //        print "Doing {$this->table_name} from {$this->start_range} to {$this->end_range}";
 
         dispatch(new FillUuidJob($this->table_name, $this->start_range, $this->end_range));

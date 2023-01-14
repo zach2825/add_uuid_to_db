@@ -70,11 +70,22 @@ class fillQueueCommand extends Command
 
             $this->info("There are $table_record_count records in the {$table_name} table. Chunk Count $chunk_count");
 
+
+            if (!Schema::hasColumn($table_name, 'uuid')) {
+                Schema::table($table_name, function (Blueprint $table) use ($table_name) {
+                    if (Schema::hasColumn($table_name, 'id')) {
+                        $table->uuid('uuid')->nullable()->after('id');
+                    } else {
+                        $table->uuid('uuid')->nullable();
+                    }
+                });
+            }
+
             if (!Schema::hasColumn($table_name, 'id')) {
                 AlterTableJob::dispatch(
                     table_name: $table_name,
                 );
-            }else {
+            } else {
                 // call alter table job for chunks of a million records for 10 million records
                 for ($i = 0; $i < $chunk_count; $i++) {
                     $start_range = $i * $per_chunk_count;
