@@ -36,19 +36,19 @@ class fillQueueCommand extends Command
         $record_count = 0;
 
         foreach($table_names as $table_name) {
-            $record_count += DB::table($table_name)->count();
+            $table_record_count = DB::table($table_name)->count();
+
+            $record_count += $table_record_count;
 
             ////////////////////////////////////////////////////////////////////
 
-            $recordCount = DB::table($table_name)->count();
-
-            $chunk_count = round($recordCount / 1_000_000, 0, PHP_ROUND_HALF_UP);
+            $chunk_count = round($table_record_count / 1_000_000, 0, PHP_ROUND_HALF_UP);
 
             if(!$chunk_count){
                 $chunk_count = 1;
             }
 
-            $this->info("There are $recordCount records in the {$table_name} table. Chunk Count $chunk_count");
+            $this->info("There are $table_record_count records in the {$table_name} table. Chunk Count $chunk_count");
 
             if (!Schema::hasColumn($table_name, 'id')) {
                 AlterTableJob::dispatch(
